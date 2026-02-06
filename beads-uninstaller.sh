@@ -530,7 +530,8 @@ cleanup_global_gitignore() {
     ignore_path="$(git config --global core.excludesfile 2>/dev/null || true)"
   fi
   if [[ -n "$ignore_path" ]]; then
-    if [[ "$ignore_path" == ~/* ]]; then
+    # shellcheck disable=SC2088
+    if [[ "$ignore_path" == '~/'* ]]; then
       ignore_path="${HOME}/${ignore_path#\~/}"
     fi
   elif [[ -f "$HOME/.config/git/ignore" ]]; then
@@ -546,8 +547,8 @@ cleanup_global_gitignore() {
     {
       t = trim($0)
       if (t ~ /Beads stealth mode/) next
-      if (t ~ /\/\.beads\/$/) next
-      if (t ~ /\/\.claude\/settings\.local\.json$/) next
+      if (t ~ /(^|\/)\.beads\/$/) next
+      if (t ~ /(^|\/)\.claude\/settings\.local\.json$/) next
       print
     }
   ' "$ignore_path" > "$tmp"
