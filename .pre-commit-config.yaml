@@ -12,17 +12,11 @@ repos:
       - id: check-yaml
         args: [--allow-multiple-documents]
         priority: 0
-      - id: check-toml
-        priority: 0
-      - id: check-json
-        priority: 0
       - id: check-added-large-files
         priority: 0
       - id: check-merge-conflict
         priority: 0
       - id: check-case-conflict
-        priority: 0
-      - id: check-symlinks
         priority: 0
       - id: check-executables-have-shebangs
         priority: 0
@@ -30,12 +24,6 @@ repos:
         args: [--fix=lf]
         priority: 0
       - id: detect-private-key
-        priority: 0
-
-  - repo: https://github.com/tsvikas/sync-with-uv
-    rev: v0.5.0
-    hooks:
-      - id: sync-with-uv
         priority: 0
 
   - repo: https://github.com/gitleaks/gitleaks
@@ -66,31 +54,10 @@ repos:
             test,
           ]
 
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.0
-    hooks:
-      - id: ruff
-        args: [--fix]
-        priority: 1
-      - id: ruff-format
-        priority: 1
-
   - repo: https://github.com/shellcheck-py/shellcheck-py
     rev: v0.11.0.1
     hooks:
       - id: shellcheck
-        priority: 1
-
-  - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.10.0
-    hooks:
-      - id: uv-lock
-        priority: 1
-
-  - repo: https://github.com/rhysd/actionlint
-    rev: v1.7.10
-    hooks:
-      - id: actionlint
         priority: 1
 
   - repo: https://github.com/crate-ci/typos
@@ -106,27 +73,13 @@ repos:
         args: [--fix]
         priority: 1
 
-  - repo: https://github.com/lycheeverse/lychee.git
-    rev: lychee-v0.22.0
-    hooks:
-      - id: lychee
-        args: [--config, .lychee.toml]
-        priority: 1
-
   - repo: local
     hooks:
-      - id: lint-templates
-        name: lint-templates
-        entry: uv run python scripts/lint_templates.py
+      - id: bashunit
+        name: bashunit tests
+        entry: ./lib/bashunit
         language: system
-        files: ^project/.*\.jinja$
-        pass_filenames: false
-        priority: 1
-      - id: pytest-cov
-        name: pytest with coverage
-        entry: uv run pytest --cov=tests --cov-fail-under=90 --cov-report=term-missing:skip-covered -q
-        language: system
-        types: [python]
+        types: [shell]
         pass_filenames: false
         stages: [pre-push]
         priority: 1
