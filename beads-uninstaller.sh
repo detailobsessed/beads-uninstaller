@@ -477,6 +477,10 @@ cleanup_repo() {
   if command -v git >/dev/null 2>&1; then
     local git_common_dir=""
     git_common_dir="$(git -C "$repo" rev-parse --git-common-dir 2>/dev/null || true)"
+    # Resolve relative paths (e.g. ".git") against the repo root
+    if [[ -n "$git_common_dir" && "$git_common_dir" != /* ]]; then
+      git_common_dir="$repo/$git_common_dir"
+    fi
     if [[ -n "$git_common_dir" ]]; then
       # hooks
       cleanup_hooks_dir "$git_common_dir/hooks"
