@@ -58,7 +58,7 @@ repos:
     rev: v0.11.0.1
     hooks:
       - id: shellcheck
-        exclude: ^lib/
+        exclude: ^(lib/|tests/)
         priority: 1
 
   - repo: https://github.com/crate-ci/typos
