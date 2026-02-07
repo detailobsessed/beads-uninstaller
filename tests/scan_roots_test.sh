@@ -61,6 +61,81 @@ function test_scan_roots_creates_output_file() {
   rm -f "$roots_file"
 }
 
+function test_scan_roots_finds_beads_directory() {
+  local repo="$TEST_DIR/myproject"
+  mkdir -p "$repo/.beads"
+  echo '{}' > "$repo/.beads/issues.jsonl"
+  git -C "$repo" init -q
+  ROOTS=("$repo")
+
+  local roots_file
+  roots_file=$(mktemp)
+  scan_roots "$roots_file"
+
+  assert_file_contains "$roots_file" "myproject"
+  rm -f "$roots_file"
+}
+
+function test_scan_roots_finds_beads_hooks_dir() {
+  local repo="$TEST_DIR/myproject"
+  mkdir -p "$repo/.beads-hooks"
+  echo 'hook' > "$repo/.beads-hooks/pre-commit"
+  git -C "$repo" init -q
+  ROOTS=("$repo")
+
+  local roots_file
+  roots_file=$(mktemp)
+  scan_roots "$roots_file"
+
+  assert_file_contains "$roots_file" "myproject"
+  rm -f "$roots_file"
+}
+
+function test_scan_roots_finds_aider_conf() {
+  local repo="$TEST_DIR/myproject"
+  mkdir -p "$repo"
+  printf '# BEADS config\nbeads: true\n' > "$repo/.aider.conf.yml"
+  git -C "$repo" init -q
+  ROOTS=("$repo")
+
+  local roots_file
+  roots_file=$(mktemp)
+  scan_roots "$roots_file"
+
+  assert_file_contains "$roots_file" "$repo"
+  rm -f "$roots_file"
+}
+
+function test_scan_roots_finds_agents_md_with_beads() {
+  local repo="$TEST_DIR/myproject"
+  mkdir -p "$repo"
+  printf '# Project\n\n## Landing the Plane (Session Completion)\n\nbd sync\n' > "$repo/AGENTS.md"
+  git -C "$repo" init -q
+  ROOTS=("$repo")
+
+  local roots_file
+  roots_file=$(mktemp)
+  scan_roots "$roots_file"
+
+  assert_file_contains "$roots_file" "$repo"
+  rm -f "$roots_file"
+}
+
+function test_scan_roots_finds_claude_settings() {
+  local repo="$TEST_DIR/myproject"
+  mkdir -p "$repo/.claude"
+  printf '{"hooks":{"SessionStart":[{"hooks":[{"command":"bd prime"}]}]}}\n' > "$repo/.claude/settings.local.json"
+  git -C "$repo" init -q
+  ROOTS=("$repo")
+
+  local roots_file
+  roots_file=$(mktemp)
+  scan_roots "$roots_file"
+
+  assert_file_contains "$roots_file" "myproject"
+  rm -f "$roots_file"
+}
+
 # ── Cache mechanism ──────────────────────────────────────────────────────
 
 function test_cache_reused_on_apply() {

@@ -58,6 +58,20 @@ function test_cleanup_global_gitignore_uses_git_config_excludesfile() {
   assert_file_not_contains "$ignore_file" "Beads stealth"
 }
 
+function test_cleanup_global_gitignore_handles_tilde_path() {
+  local ignore_file="$HOME/.gitignore_global"
+  printf '# Beads stealth mode\n.beads/\nkeep_this\n' > "$ignore_file"
+
+  # Mock git to return a tilde-prefixed path like git config often does
+  bashunit::mock git <<< "~/.gitignore_global"
+
+  cleanup_global_gitignore
+
+  assert_file_exists "$ignore_file"
+  assert_file_contains "$ignore_file" "keep_this"
+  assert_file_not_contains "$ignore_file" "Beads stealth"
+}
+
 # ── cleanup_home ─────────────────────────────────────────────────────────
 
 function test_cleanup_home_removes_dot_beads() {

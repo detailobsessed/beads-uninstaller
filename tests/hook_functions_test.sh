@@ -104,6 +104,30 @@ function test_restore_hook_backup_prefers_dot_old_over_dot_backup() {
   assert_same "from old" "$(cat "$hook")"
 }
 
+function test_restore_hook_backup_restores_timestamped_backup() {
+  APPLY=1
+  local hook="$TEST_DIR/pre-commit"
+  echo "old backup" > "${hook}.backup-20240101"
+  sleep 0.1
+  echo "newer backup" > "${hook}.backup-20240615"
+
+  restore_hook_backup "$hook"
+
+  assert_file_exists "$hook"
+  assert_same "newer backup" "$(cat "$hook")"
+}
+
+function test_restore_hook_backup_removes_beads_timestamped_backup() {
+  APPLY=1
+  local hook="$TEST_DIR/pre-commit"
+  echo "bd-hooks-version: 1.0" > "${hook}.backup-20240101"
+
+  restore_hook_backup "$hook"
+
+  assert_file_not_exists "${hook}.backup-20240101"
+  assert_file_not_exists "$hook"
+}
+
 # ── cleanup_hooks_dir ────────────────────────────────────────────────────
 
 function test_cleanup_hooks_dir_removes_beads_hooks() {

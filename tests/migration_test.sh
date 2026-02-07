@@ -86,6 +86,24 @@ function test_migrate_repos_to_tk_handles_no_beads_data() {
   assert_same "0" "$MIGRATE_COUNT"
 }
 
+function test_migrate_repos_to_tk_warns_when_tk_unavailable() {
+  local saved_path="$PATH"
+  PATH="/usr/bin:/bin"
+
+  local repo="$TEST_DIR/myrepo"
+  mkdir -p "$repo/.beads"
+  echo '{}' > "$repo/.beads/issues.jsonl"
+  local roots_file="$TEST_DIR/roots.txt"
+  echo "$repo" > "$roots_file"
+
+  local output
+  output=$(migrate_repos_to_tk "$roots_file" 2>&1)
+
+  PATH="$saved_path"
+  assert_contains "Skipping migration" "$output"
+  assert_same "0" "$MIGRATE_COUNT"
+}
+
 function test_migrate_repos_to_tk_handles_empty_roots_file() {
   local roots_file="$TEST_DIR/roots.txt"
   touch "$roots_file"

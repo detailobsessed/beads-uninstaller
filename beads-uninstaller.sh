@@ -290,9 +290,26 @@ if heading in content:
         if "bd sync" in block or "git pull --rebase" in block:
             content = content[:m.start()] + "\n" + content[m.end():]
 
+# Strip Quick Reference section if it contains bd commands
+qr_pattern = re.compile(r"\n?## Quick Reference[\s\S]*?(?=\n## |\Z)")
+m = qr_pattern.search(content)
+if m:
+    block = m.group(0)
+    bd_cmds = ["bd ready", "bd show", "bd close", "bd sync", "bd update"]
+    if sum(1 for c in bd_cmds if c in block) >= 2:
+        content = content[:m.start()] + "\n" + content[m.end():]
+
+# Strip lines mentioning bd/beads onboarding
+content = re.sub(r"(?m)^.*\bbd\b.*\b(?:beads|issue tracking)\b.*$\n?", "", content)
+content = re.sub(r"(?m)^.*\b(?:beads|issue tracking)\b.*\bbd\b.*$\n?", "", content)
+
 # Detect fully beads-generated AGENTS.md (contains bd commands)
 beads_markers = ["bd onboard", "bd ready", "bd show", "bd close", "bd sync", "bd update"]
 if sum(1 for m in beads_markers if m in content) >= 3:
+    content = ""
+
+# If only a heading and whitespace remain, treat as empty
+if re.match(r"^\s*#[^#].*\s*$", content.strip()):
     content = ""
 
 content = re.sub(r"\n{3,}", "\n\n", content)
@@ -801,42 +818,49 @@ add_repo_root() {
 scan_roots() {
   local roots_file="$1"
 
-  local root
+  local root abs_root
   for root in "${ROOTS[@]}"; do
     [[ -d "$root" ]] || continue
+    abs_root="$(cd "$root" && pwd)"
     log "Scanning: $root"
 
-    { rg --files --hidden --no-ignore --null -g '!.git/**' -g '.beads/**' "$root" 2>/dev/null || true; } | while IFS= read -r -d '' file; do
-      case "$file" in
-        "$HOME/.beads"/*)
-          continue
-          ;;
-      esac
-      add_repo_root "$file" >> "$roots_file"
-    done
+    # rg globs are matched relative to the search dir, so we cd into it
+    (
+      cd "$abs_root" || exit
 
-    { rg --files --hidden --no-ignore --null -g '!.git/**' -g '.beads-hooks/**' "$root" 2>/dev/null || true; } | while IFS= read -r -d '' file; do
-      add_repo_root "$file" >> "$roots_file"
-    done
-
-    { rg --files --hidden --no-ignore --null -g '!.git/**' \
-      -g '.aider.conf.yml' \
-      -g '.cursor/rules/beads.mdc' \
-      -g '.aider/BEADS.md' \
-      -g '.aider/README.md' \
-      -g '.claude/settings.local.json' \
-      -g '.gemini/settings.json' \
-      "$root" 2>/dev/null || true; } | while IFS= read -r -d '' file; do
-        add_repo_root "$file" >> "$roots_file"
+      { rg --files --hidden --no-ignore --null -g '!.git/**' -g '.beads/**' . 2>/dev/null || true; } | while IFS= read -r -d '' file; do
+        local full="$abs_root/${file#./}"
+        case "$full" in
+          "$HOME/.beads"/*)
+            continue
+            ;;
+        esac
+        add_repo_root "$full" >> "$roots_file"
       done
 
-    # AGENTS.md that actually contains beads instructions
-    { rg -l --hidden --no-ignore --null -g '!.git/**' -g 'AGENTS.md' \
-      -e 'Landing the Plane \(Session Completion\)' \
-      -e 'BEGIN BEADS INTEGRATION' \
-      "$root" 2>/dev/null || true; } | while IFS= read -r -d '' file; do
-        add_repo_root "$file" >> "$roots_file"
+      { rg --files --hidden --no-ignore --null -g '!.git/**' -g '.beads-hooks/**' . 2>/dev/null || true; } | while IFS= read -r -d '' file; do
+        add_repo_root "$abs_root/${file#./}" >> "$roots_file"
       done
+
+      { rg --files --hidden --no-ignore --null -g '!.git/**' \
+        -g '.aider.conf.yml' \
+        -g '.cursor/rules/beads.mdc' \
+        -g '.aider/BEADS.md' \
+        -g '.aider/README.md' \
+        -g '.claude/settings.local.json' \
+        -g '.gemini/settings.json' \
+        . 2>/dev/null || true; } | while IFS= read -r -d '' file; do
+          add_repo_root "$abs_root/${file#./}" >> "$roots_file"
+        done
+
+      # AGENTS.md that actually contains beads instructions
+      { rg -l --hidden --no-ignore --null -g '!.git/**' -g 'AGENTS.md' \
+        -e 'Landing the Plane \(Session Completion\)' \
+        -e 'BEGIN BEADS INTEGRATION' \
+        . 2>/dev/null || true; } | while IFS= read -r -d '' file; do
+          add_repo_root "$abs_root/${file#./}" >> "$roots_file"
+        done
+    )
   done
 }
 

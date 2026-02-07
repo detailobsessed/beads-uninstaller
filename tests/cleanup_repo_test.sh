@@ -190,6 +190,32 @@ function test_cleanup_repo_removes_beads_config_keys() {
   assert_same "UNSET" "$backend"
 }
 
+function test_cleanup_repo_cleans_beads_hooks_path() {
+  local repo="$TEST_DIR/myproject"
+  create_beads_repo "$repo"
+  mkdir -p "$repo/.beads-hooks"
+  printf '#!/bin/bash\nbd hooks run pre-commit\n' > "$repo/.beads-hooks/pre-commit"
+  git -C "$repo" config core.hooksPath .beads-hooks
+
+  cleanup_repo "$repo"
+
+  assert_file_not_exists "$repo/.beads-hooks/pre-commit"
+  local hp
+  hp=$(git -C "$repo" config --get core.hooksPath 2>/dev/null || echo "UNSET")
+  assert_same "UNSET" "$hp"
+}
+
+function test_cleanup_repo_removes_beads_worktrees() {
+  local repo="$TEST_DIR/myproject"
+  create_beads_repo "$repo"
+  mkdir -p "$repo/.git/beads-worktrees"
+  echo "worktree data" > "$repo/.git/beads-worktrees/info"
+
+  cleanup_repo "$repo"
+
+  assert_directory_not_exists "$repo/.git/beads-worktrees"
+}
+
 function test_cleanup_repo_tracks_repo_in_cleaned_repos() {
   local repo="$TEST_DIR/myproject"
   create_beads_repo "$repo"

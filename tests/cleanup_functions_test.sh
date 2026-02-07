@@ -128,7 +128,7 @@ function test_cleanup_agents_file_strips_beads_integration_block() {
 
 function test_cleanup_agents_file_strips_landing_the_plane_section() {
   local file="$TEST_DIR/AGENTS.md"
-  printf '# My Project\n\n## Landing the Plane (Session Completion)\n\nRun bd sync and git pull --rebase.\n' > "$file"
+  printf '# My Project\n\nCustom instructions here.\n\n## Landing the Plane (Session Completion)\n\nRun bd sync and git pull --rebase.\n' > "$file"
 
   cleanup_agents_file "$file"
 
