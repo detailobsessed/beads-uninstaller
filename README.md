@@ -8,12 +8,14 @@ config files, and more.
 
 Tested end-to-end: `brew install beads` → `bd init` →
 run uninstaller → verify zero artifacts remain.
+**180 automated tests** ensure every cleanup path works
+correctly before touching your system.
 
 ## Quick Start
 
 ```bash
 # Clone
-git clone https://github.com/ismar/beads-uninstaller.git
+git clone https://github.com/detailobsessed/beads-uninstaller.git
 cd beads-uninstaller
 
 # Dry-run (safe — no changes are made)
@@ -106,14 +108,14 @@ cd beads-uninstaller
 ## Testing
 
 The project uses [bashunit](https://bashunit.typeddevs.com/)
-with 126 tests covering all functions.
+with 180 tests covering all functions. Coverage is
+enabled by default via `.env`.
 
 ```bash
-# Run all tests
+# Run all tests (with coverage)
 ./lib/bashunit tests/
 
-# Run with coverage
-./lib/bashunit tests/ --coverage --coverage-paths beads-uninstaller.sh
+# Coverage report is written to coverage/lcov.info
 ```
 
 ## Troubleshooting
@@ -153,6 +155,10 @@ Open `.git/config` and remove these sections:
 - **ripgrep** (`rg`) — used for fast filesystem scanning
 - **python3** — used for JSON/AGENTS.md cleanup
 - **git** — for git config and hook cleanup
+
+## License
+
+[MIT](LICENSE)
 
 ## Attribution
 

@@ -79,3 +79,72 @@ SCRIPT
 
   assert_file_exists "$fake_bd"
 }
+
+function test_cleanup_binaries_finds_go_bin_bd() {
+  local fake_bd="$HOME/go/bin/bd"
+  cat > "$fake_bd" <<'SCRIPT'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "version" ]]; then
+  echo "bd version 2.0.0"
+  exit 0
+fi
+SCRIPT
+  chmod +x "$fake_bd"
+
+  cleanup_binaries
+
+  assert_file_not_exists "$fake_bd"
+  assert_greater_than "0" "$STAT_BINARIES"
+}
+
+function test_cleanup_binaries_removes_multiple_bd_binaries() {
+  for dir in "$HOME/.local/bin" "$HOME/go/bin"; do
+    cat > "$dir/bd" <<'SCRIPT'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "version" ]]; then
+  echo "bd version 1.0"
+  exit 0
+fi
+SCRIPT
+    chmod +x "$dir/bd"
+  done
+
+  cleanup_binaries
+
+  assert_file_not_exists "$HOME/.local/bin/bd"
+  assert_file_not_exists "$HOME/go/bin/bd"
+}
+
+function test_cleanup_binaries_finds_bd_on_path() {
+  # Put a fake bd on PATH so command -v bd succeeds
+  local bin_dir="$TEST_DIR/pathbin"
+  mkdir -p "$bin_dir"
+  cat > "$bin_dir/bd" <<'SCRIPT'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "version" ]]; then
+  echo "bd version 3.0.0"
+  exit 0
+fi
+SCRIPT
+  chmod +x "$bin_dir/bd"
+
+  PATH="$bin_dir:$PATH" cleanup_binaries
+
+  assert_file_not_exists "$bin_dir/bd"
+  assert_greater_than "0" "$STAT_BINARIES"
+}
+
+function test_cleanup_binaries_skips_bd_that_cannot_execute_version() {
+  local fake_bd="$HOME/.local/bin/bd"
+  cat > "$fake_bd" <<'SCRIPT'
+#!/usr/bin/env bash
+exit 1
+SCRIPT
+  chmod +x "$fake_bd"
+
+  # Avoid $() subshell so coverage tracks
+  cleanup_binaries > "$TEST_DIR/output.txt" 2>&1 || true
+
+  assert_file_exists "$fake_bd"
+  assert_file_contains "$TEST_DIR/output.txt" "Skipping"
+}

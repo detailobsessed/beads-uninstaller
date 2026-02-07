@@ -2,6 +2,11 @@
 
 function set_up() {
   reset_state
+  TEST_DIR=$(cd "$(mktemp -d)" && pwd -P)
+}
+
+function tear_down() {
+  rm -rf "$TEST_DIR"
 }
 
 function test_defaults_are_dry_run() {
@@ -55,19 +60,16 @@ function test_combined_flags() {
 }
 
 function test_unknown_flag_exits() {
-  local output
-  output=$(parse_args --bogus 2>&1 || true)
-  assert_contains "Unknown argument" "$output"
+  parse_args --bogus > "$TEST_DIR/output.txt" 2>&1 || true
+  assert_file_contains "$TEST_DIR/output.txt" "Unknown argument"
 }
 
 function test_root_without_dir_exits() {
-  local output
-  output=$(parse_args --root 2>&1 || true)
-  assert_contains "--root requires a directory" "$output"
+  parse_args --root > "$TEST_DIR/output.txt" 2>&1 || true
+  assert_file_contains "$TEST_DIR/output.txt" "--root requires a directory"
 }
 
 function test_help_flag_shows_usage() {
-  local output
-  output=$(parse_args --help 2>&1 || true)
-  assert_contains "Beads uninstall/cleanup script" "$output"
+  parse_args --help > "$TEST_DIR/output.txt" 2>&1 || true
+  assert_file_contains "$TEST_DIR/output.txt" "Beads uninstall/cleanup script"
 }

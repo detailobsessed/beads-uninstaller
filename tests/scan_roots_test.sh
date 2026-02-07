@@ -136,6 +136,44 @@ function test_scan_roots_finds_claude_settings() {
   rm -f "$roots_file"
 }
 
+function test_scan_roots_excludes_home_dotbeads() {
+  # When scanning HOME itself, ~/.beads should be excluded (handled by cleanup_home)
+  local fake_home="$TEST_DIR/fakehome"
+  mkdir -p "$fake_home/.beads"
+  echo '{}' > "$fake_home/.beads/issues.jsonl"
+
+  local orig_home="$HOME"
+  export HOME="$fake_home"
+  ROOTS=("$fake_home")
+
+  local roots_file
+  roots_file=$(mktemp)
+  scan_roots "$roots_file"
+
+  export HOME="$orig_home"
+
+  # HOME/.beads should NOT produce a root entry
+  local count
+  count=$(wc -l < "$roots_file" | tr -d ' ')
+  assert_same "0" "$count"
+  rm -f "$roots_file"
+}
+
+function test_scan_roots_finds_gemini_settings() {
+  local repo="$TEST_DIR/myproject"
+  mkdir -p "$repo/.gemini"
+  printf '{"hooks":{}}\n' > "$repo/.gemini/settings.json"
+  git -C "$repo" init -q
+  ROOTS=("$repo")
+
+  local roots_file
+  roots_file=$(mktemp)
+  scan_roots "$roots_file"
+
+  assert_file_contains "$roots_file" "myproject"
+  rm -f "$roots_file"
+}
+
 # ── Cache mechanism ──────────────────────────────────────────────────────
 
 function test_cache_reused_on_apply() {

@@ -96,11 +96,39 @@ function test_migrate_repos_to_tk_warns_when_tk_unavailable() {
   local roots_file="$TEST_DIR/roots.txt"
   echo "$repo" > "$roots_file"
 
-  local output
-  output=$(migrate_repos_to_tk "$roots_file" 2>&1)
+  migrate_repos_to_tk "$roots_file" > "$TEST_DIR/output.txt" 2>&1 || true
 
   PATH="$saved_path"
-  assert_contains "Skipping migration" "$output"
+  assert_file_contains "$TEST_DIR/output.txt" "Skipping migration"
+  assert_same "0" "$MIGRATE_COUNT"
+}
+
+function test_migrate_repos_to_tk_reports_migration_failure() {
+  # Create a fake tk that fails migrate-beads
+  local bin_dir="$TEST_DIR/fakebin"
+  mkdir -p "$bin_dir"
+  cat > "$bin_dir/tk" <<'SCRIPT'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "migrate-beads" ]]; then
+  echo "Error: corrupt jsonl" >&2
+  exit 1
+fi
+SCRIPT
+  chmod +x "$bin_dir/tk"
+
+  local repo="$TEST_DIR/myrepo"
+  mkdir -p "$repo/.beads"
+  echo '{}' > "$repo/.beads/issues.jsonl"
+  local roots_file="$TEST_DIR/roots.txt"
+  echo "$repo" > "$roots_file"
+
+  # Avoid $() subshell so coverage tracks
+  local saved_path="$PATH"
+  PATH="$bin_dir:$PATH"
+  migrate_repos_to_tk "$roots_file" > "$TEST_DIR/output.txt" 2>&1 || true
+  PATH="$saved_path"
+
+  assert_file_contains "$TEST_DIR/output.txt" "Migration failed"
   assert_same "0" "$MIGRATE_COUNT"
 }
 

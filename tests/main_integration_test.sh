@@ -37,11 +37,11 @@ function test_main_dry_run_does_not_modify() {
   local repo="$TEST_DIR/project"
   create_test_repo "$repo"
 
-  local output
-  output=$(main --root "$repo" --skip-home --skip-binary 2>&1)
+  # Avoid $() subshell so coverage tracks
+  main --root "$repo" --skip-home --skip-binary > "$TEST_DIR/output.txt" 2>&1 || true
 
-  assert_contains "DRY-RUN" "$output"
-  assert_contains "beads" "$output"
+  assert_file_contains "$TEST_DIR/output.txt" "DRY-RUN"
+  assert_file_contains "$TEST_DIR/output.txt" "beads"
   assert_directory_exists "$repo/.beads"
   assert_file_exists "$repo/.gitattributes"
 }
@@ -53,11 +53,11 @@ function test_main_apply_cleans_repo() {
   CACHE_FILE="$TEST_DIR/cache.txt"
   echo "$repo" > "$CACHE_FILE"
 
-  local output
-  output=$(main --root "$repo" --skip-home --skip-binary --apply 2>&1)
+  # Avoid $() subshell so coverage tracks
+  main --root "$repo" --skip-home --skip-binary --apply > "$TEST_DIR/output.txt" 2>&1 || true
 
-  assert_contains "APPLY" "$output"
-  assert_contains "beads is no more" "$output"
+  assert_file_contains "$TEST_DIR/output.txt" "APPLY"
+  assert_file_contains "$TEST_DIR/output.txt" "beads is no more"
   assert_directory_not_exists "$repo/.beads"
   assert_file_not_exists "$repo/.gitattributes"
   local driver
@@ -84,10 +84,10 @@ function test_main_reuses_cache_on_apply() {
   CACHE_FILE="$TEST_DIR/cache.txt"
   echo "$repo" > "$CACHE_FILE"
 
-  local output
-  output=$(main --root "$repo" --skip-home --skip-binary --apply 2>&1)
+  # Avoid $() subshell so coverage tracks
+  main --root "$repo" --skip-home --skip-binary --apply > "$TEST_DIR/output.txt" 2>&1 || true
 
-  assert_contains "cached scan" "$output"
+  assert_file_contains "$TEST_DIR/output.txt" "cached scan"
   assert_directory_not_exists "$repo/.beads"
 }
 
@@ -106,16 +106,16 @@ function test_main_shows_roots_in_banner() {
   local repo="$TEST_DIR/project"
   create_test_repo "$repo"
 
-  local output
-  output=$(main --root "$repo" --skip-home --skip-binary 2>&1)
+  # Avoid $() subshell so coverage tracks
+  main --root "$repo" --skip-home --skip-binary > "$TEST_DIR/output.txt" 2>&1 || true
 
-  assert_contains "$repo" "$output"
+  assert_file_contains "$TEST_DIR/output.txt" "$repo"
 }
 
 function test_main_defaults_root_to_home() {
   # With no --root, main uses $HOME
-  local output
-  output=$(main --skip-binary 2>&1)
+  # Avoid $() subshell so coverage tracks
+  main --skip-binary > "$TEST_DIR/output.txt" 2>&1 || true
 
-  assert_contains "Roots" "$output"
+  assert_file_contains "$TEST_DIR/output.txt" "Roots"
 }
