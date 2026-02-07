@@ -214,9 +214,9 @@ cleanup_gitattributes() {
 
   local tmp
   tmp=$(mktemp)
-  awk '!/merge=beads/' "$file" > "$tmp"
+  awk '!/merge=beads/ && !/^#.*[Bb]eads.*JSONL/ && !/^#.*[Bb]d merge/' "$file" > "$tmp"
   if ! cmp -s "$file" "$tmp"; then
-    if [[ -s "$tmp" ]]; then
+    if grep -q '[^[:space:]]' "$tmp" 2>/dev/null; then
       run_mv "$tmp" "$file"
     else
       run_rm "$file"
@@ -289,6 +289,11 @@ if heading in content:
         block = m.group(0)
         if "bd sync" in block or "git pull --rebase" in block:
             content = content[:m.start()] + "\n" + content[m.end():]
+
+# Detect fully beads-generated AGENTS.md (contains bd commands)
+beads_markers = ["bd onboard", "bd ready", "bd show", "bd close", "bd sync", "bd update"]
+if sum(1 for m in beads_markers if m in content) >= 3:
+    content = ""
 
 content = re.sub(r"\n{3,}", "\n\n", content)
 changed = content != orig
@@ -503,6 +508,16 @@ cleanup_repo() {
       if git -C "$repo" config --get merge.beads.driver >/dev/null 2>&1; then
         run git -C "$repo" config --unset merge.beads.driver
         run git -C "$repo" config --unset merge.beads.name || true
+      fi
+
+      # beads.* config keys (e.g. beads.role, beads.backend)
+      local beads_keys
+      beads_keys="$(git -C "$repo" config --local --get-regexp '^beads\.' 2>/dev/null | awk '{print $1}' || true)"
+      if [[ -n "$beads_keys" ]]; then
+        while IFS= read -r key; do
+          [[ -n "$key" ]] || continue
+          run git -C "$repo" config --unset "$key"
+        done <<< "$beads_keys"
       fi
 
       cleanup_gitattributes "$repo"
