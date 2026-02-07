@@ -174,6 +174,22 @@ function test_cleanup_repo_removes_merge_driver_config() {
   assert_same "UNSET" "$driver"
 }
 
+function test_cleanup_repo_removes_beads_config_keys() {
+  local repo="$TEST_DIR/myproject"
+  create_beads_repo "$repo"
+  git -C "$repo" config beads.role maintainer
+  git -C "$repo" config beads.backend sqlite
+
+  cleanup_repo "$repo"
+
+  local role
+  role=$(git -C "$repo" config --get beads.role 2>/dev/null || echo "UNSET")
+  assert_same "UNSET" "$role"
+  local backend
+  backend=$(git -C "$repo" config --get beads.backend 2>/dev/null || echo "UNSET")
+  assert_same "UNSET" "$backend"
+}
+
 function test_cleanup_repo_tracks_repo_in_cleaned_repos() {
   local repo="$TEST_DIR/myproject"
   create_beads_repo "$repo"

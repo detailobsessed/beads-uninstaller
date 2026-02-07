@@ -34,6 +34,29 @@ function test_cleanup_gitattributes_removes_file_if_only_beads() {
   assert_file_not_exists "$repo/.gitattributes"
 }
 
+function test_cleanup_gitattributes_strips_beads_comment_lines() {
+  local repo="$TEST_DIR/repo"
+  mkdir -p "$repo"
+  printf '# Use bd merge for beads JSONL files\n*.jsonl merge=beads\n*.txt text\n' > "$repo/.gitattributes"
+
+  cleanup_gitattributes "$repo"
+
+  assert_file_exists "$repo/.gitattributes"
+  assert_file_not_contains "$repo/.gitattributes" "bd merge"
+  assert_file_not_contains "$repo/.gitattributes" "merge=beads"
+  assert_file_contains "$repo/.gitattributes" "*.txt text"
+}
+
+function test_cleanup_gitattributes_removes_whitespace_only_file() {
+  local repo="$TEST_DIR/repo"
+  mkdir -p "$repo"
+  printf '# Use bd merge for beads JSONL files\n*.jsonl merge=beads\n' > "$repo/.gitattributes"
+
+  cleanup_gitattributes "$repo"
+
+  assert_file_not_exists "$repo/.gitattributes"
+}
+
 function test_cleanup_gitattributes_noop_if_no_beads() {
   local repo="$TEST_DIR/repo"
   mkdir -p "$repo"
@@ -117,6 +140,15 @@ function test_cleanup_agents_file_strips_landing_the_plane_section() {
 function test_cleanup_agents_file_removes_empty_result() {
   local file="$TEST_DIR/AGENTS.md"
   printf '<!-- BEGIN BEADS INTEGRATION -->\nOnly beads content\n<!-- END BEADS INTEGRATION -->\n' > "$file"
+
+  cleanup_agents_file "$file"
+
+  assert_file_not_exists "$file"
+}
+
+function test_cleanup_agents_file_removes_fully_beads_generated() {
+  local file="$TEST_DIR/AGENTS.md"
+  printf '# Agent Instructions\n\nThis project uses **bd** (beads). Run \`bd onboard\` to get started.\n\n## Quick Reference\n\n```bash\nbd ready\nbd show <id>\nbd update <id>\nbd close <id>\nbd sync\n```\n' > "$file"
 
   cleanup_agents_file "$file"
 
