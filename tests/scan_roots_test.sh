@@ -44,6 +44,18 @@ function test_add_repo_root_falls_back_to_dir_without_git() {
   assert_same "$dir" "$result"
 }
 
+function test_add_repo_root_handles_git_hooks_path() {
+  local repo="$TEST_DIR/myproject"
+  mkdir -p "$repo/.git/hooks"
+  git -C "$repo" init -q
+  touch "$repo/.git/hooks/pre-commit"
+
+  local result
+  result="$(add_repo_root "$repo/.git/hooks/pre-commit")"
+
+  assert_same "$repo" "$result"
+}
+
 # ── scan_roots ───────────────────────────────────────────────────────────
 
 function test_scan_roots_creates_output_file() {
@@ -171,6 +183,66 @@ function test_scan_roots_finds_gemini_settings() {
   scan_roots "$roots_file"
 
   assert_file_contains "$roots_file" "myproject"
+  rm -f "$roots_file"
+}
+
+function test_scan_roots_finds_beads_git_hooks() {
+  local repo="$TEST_DIR/myproject"
+  mkdir -p "$repo/.git/hooks"
+  git -C "$repo" init -q
+
+  # Create a beads hook with the bd-shim signature
+  cat > "$repo/.git/hooks/pre-commit" <<'EOF'
+#!/usr/bin/env sh
+# bd-shim v1
+# bd-hooks-version: 0.49.3
+#
+# bd (beads) pre-commit hook - thin shim
+exec bd hooks run pre-commit "$@"
+EOF
+  chmod +x "$repo/.git/hooks/pre-commit"
+
+  ROOTS=("$repo")
+
+  local roots_file
+  roots_file=$(mktemp)
+  scan_roots "$roots_file"
+
+  assert_file_contains "$roots_file" "myproject"
+  rm -f "$roots_file"
+}
+
+function test_scan_roots_finds_repo_with_only_git_hooks() {
+  # Test the specific case: repo with ONLY beads hooks, no other beads artifacts
+  local repo="$TEST_DIR/hooks_only"
+  mkdir -p "$repo/.git/hooks"
+  git -C "$repo" init -q
+
+  # Create multiple beads hooks
+  cat > "$repo/.git/hooks/post-checkout" <<'EOF'
+#!/usr/bin/env sh
+# bd-shim v1
+# bd-hooks-version: 0.49.3
+exec bd hook post-checkout "$@"
+EOF
+
+  cat > "$repo/.git/hooks/pre-push" <<'EOF'
+#!/usr/bin/env sh
+# bd-shim v1
+exec bd hooks run pre-push "$@"
+EOF
+
+  chmod +x "$repo/.git/hooks/post-checkout"
+  chmod +x "$repo/.git/hooks/pre-push"
+
+  ROOTS=("$repo")
+
+  local roots_file
+  roots_file=$(mktemp)
+  scan_roots "$roots_file"
+
+  # Should find the repo even with no .beads/ or other artifacts
+  assert_file_contains "$roots_file" "hooks_only"
   rm -f "$roots_file"
 }
 

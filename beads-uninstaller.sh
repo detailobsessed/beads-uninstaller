@@ -798,19 +798,25 @@ add_repo_root() {
   fi
 
   local root=""
-  if command -v git >/dev/null 2>&1; then
-    root="$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null || true)"
-  fi
-  if [[ -z "$root" ]]; then
-    case "$path" in
-      */.beads|*/.beads-hooks)
-        root="$(dirname "$path")"
-        ;;
-      *)
+
+  # Special handling for paths inside .git/ since git commands don't work there
+  case "$path" in
+    */.git/hooks/*|*/.git/hooks)
+      # Extract repo root by removing /.git/hooks and everything after
+      root="${path%%/.git/hooks*}"
+      ;;
+    */.beads|*/.beads-hooks)
+      root="$(dirname "$path")"
+      ;;
+    *)
+      if command -v git >/dev/null 2>&1; then
+        root="$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null || true)"
+      fi
+      if [[ -z "$root" ]]; then
         root="$dir"
-        ;;
-    esac
-  fi
+      fi
+      ;;
+  esac
 
   printf '%s\n' "$root"
 }
@@ -857,6 +863,17 @@ scan_roots() {
       { rg -l --hidden --no-ignore --null -g '!.git/**' -g 'AGENTS.md' \
         -e 'Landing the Plane \(Session Completion\)' \
         -e 'BEGIN BEADS INTEGRATION' \
+        . 2>/dev/null || true; } | while IFS= read -r -d '' file; do
+          add_repo_root "$abs_root/${file#./}" >> "$roots_file"
+        done
+
+      # Git hooks containing beads signatures
+      # Search for hooks with bd-shim, bd-hooks-version, or "bd (beads)" markers
+      { rg -l --hidden --no-ignore --null -g '.git/hooks/*' \
+        -e 'bd-shim' \
+        -e 'bd-hooks-version:' \
+        -e 'bd \(beads\)' \
+        -e 'bd hooks run' \
         . 2>/dev/null || true; } | while IFS= read -r -d '' file; do
           add_repo_root "$abs_root/${file#./}" >> "$roots_file"
         done

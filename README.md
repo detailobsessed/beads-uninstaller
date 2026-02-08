@@ -8,7 +8,7 @@ config files, and more.
 
 Tested end-to-end: `brew install beads` → `bd init` →
 run uninstaller → verify zero artifacts remain.
-**180 automated tests** ensure every cleanup path works
+**183 automated tests** ensure every cleanup path works
 correctly before touching your system.
 
 ## Quick Start
@@ -108,7 +108,7 @@ cd beads-uninstaller
 ## Testing
 
 The project uses [bashunit](https://bashunit.typeddevs.com/)
-with 180 tests covering all functions. Coverage is
+with 183 tests covering all functions. Coverage is
 enabled by default via `.env`.
 
 ```bash
@@ -122,10 +122,14 @@ enabled by default via `.env`.
 
 If you still see beads artifacts after running the script:
 
-**Git hooks not fully removed?**
+**Git hooks not removed?**
+
+The uninstaller now detects beads hooks by scanning `.git/hooks/`
+for beads signatures, even if no other beads artifacts exist.
+If hooks persist, manually check:
 
 ```bash
-rm -rf .git/hooks/
+grep -r "bd-shim\|bd-hooks-version" .git/hooks/
 ```
 
 **Config still in `.git/config`?**
