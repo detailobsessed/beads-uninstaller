@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
+# bashunit: no-parallel-tests
 
 function set_up() {
+  # shellcheck source=../beads-uninstaller.sh
+  source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/beads-uninstaller.sh"
   reset_state
   APPLY=1
-  TEST_DIR=$(mktemp -d)
+  TEST_DIR=$(bashunit::temp_dir)
   # Override HOME for test isolation
   REAL_HOME="$HOME"
   export HOME="$TEST_DIR/fakehome"
@@ -12,7 +15,6 @@ function set_up() {
 
 function tear_down() {
   export HOME="$REAL_HOME"
-  rm -rf "$TEST_DIR"
 }
 
 # ── cleanup_global_gitignore ─────────────────────────────────────────────

@@ -1,13 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-export SCRIPT_DIR
-
-# Source the script (main is guarded, won't execute)
-# shellcheck source=../beads-uninstaller.sh
-source "$SCRIPT_DIR/beads-uninstaller.sh"
-
 # Helper: reset all global state to defaults
 reset_state() {
   APPLY=0
@@ -24,3 +17,4 @@ reset_state() {
   CACHE_FILE="/tmp/beads-uninstall-test-repos.txt"
   rm -f "$CACHE_FILE"
 }
+export -f reset_state

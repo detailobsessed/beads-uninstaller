@@ -1,8 +1,19 @@
 #!/usr/bin/env bash
+# bashunit: no-parallel-tests
+
+_TEMPLATE_DIR=""
+
+function set_up_before_script() {
+  # shellcheck source=../beads-uninstaller.sh
+  source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/beads-uninstaller.sh"
+  _TEMPLATE_DIR=$(cd "$(bashunit::temp_dir)" && pwd -P)
+  _create_template_repo "$_TEMPLATE_DIR/template"
+}
+
 
 function set_up() {
   reset_state
-  TEST_DIR=$(cd "$(mktemp -d)" && pwd -P)
+  TEST_DIR=$(cd "$(bashunit::temp_dir)" && pwd -P)
   REAL_HOME="$HOME"
   export HOME="$TEST_DIR/fakehome"
   mkdir -p "$HOME/.local/bin" "$HOME/go/bin"
@@ -10,12 +21,10 @@ function set_up() {
 
 function tear_down() {
   export HOME="$REAL_HOME"
-  rm -rf "$TEST_DIR"
-  rm -f /tmp/beads-uninstall-test-repos.txt
 }
 
-# Helper: create a minimal beads repo
-create_test_repo() {
+# Helper: create the template repo (called once)
+_create_template_repo() {
   local repo="$1"
   mkdir -p "$repo"
   git -C "$repo" init -q
@@ -29,6 +38,12 @@ create_test_repo() {
   printf '#!/bin/bash\nbd hooks run post-merge\n' > "$repo/.git/hooks/post-merge"
   mkdir -p "$repo/.git/info"
   printf '# Beads stealth mode\n.beads/\n' > "$repo/.git/info/exclude"
+}
+
+# Helper: copy template repo (fast, no git init)
+create_test_repo() {
+  local repo="$1"
+  cp -R "$_TEMPLATE_DIR/template" "$repo"
 }
 
 # ── main integration ────────────────────────────────────────────────────
@@ -60,12 +75,10 @@ function test_main_apply_cleans_repo() {
   assert_file_contains "$TEST_DIR/output.txt" "beads is no more"
   assert_directory_not_exists "$repo/.beads"
   assert_file_not_exists "$repo/.gitattributes"
-  local driver
-  driver=$(git -C "$repo" config --get merge.beads.driver 2>/dev/null || echo "UNSET")
-  assert_same "UNSET" "$driver"
-  local role
-  role=$(git -C "$repo" config --get beads.role 2>/dev/null || echo "UNSET")
-  assert_same "UNSET" "$role"
+  git -C "$repo" config --get merge.beads.driver 2>/dev/null
+  assert_exit_code "1"
+  git -C "$repo" config --get beads.role 2>/dev/null
+  assert_exit_code "1"
 }
 
 function test_main_saves_cache_on_dry_run() {
