@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
+# bashunit: no-parallel-tests
 
 function set_up() {
+  # shellcheck source=../beads-uninstaller.sh
+  source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/beads-uninstaller.sh"
   reset_state
   APPLY=1
-  TEST_DIR=$(mktemp -d)
+  TEST_DIR=$(bashunit::temp_dir)
 }
 
 function tear_down() {
-  rm -rf "$TEST_DIR"
+  : # bashunit::temp_dir auto-cleans
 }
 
 # ── run() stat tracking ─────────────────────────────────────────────────
@@ -96,7 +99,7 @@ function test_run_mv_moves_file() {
 
   assert_file_not_exists "$TEST_DIR/src.txt"
   assert_file_exists "$TEST_DIR/dst.txt"
-  assert_same "content" "$(cat "$TEST_DIR/dst.txt")"
+  assert_file_contains "$TEST_DIR/dst.txt" "content"
 }
 
 function test_run_mv_dry_run_does_not_move() {

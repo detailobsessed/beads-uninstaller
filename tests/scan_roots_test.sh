@@ -1,21 +1,40 @@
 #!/usr/bin/env bash
+# bashunit: no-parallel-tests
+
+_TEMPLATE_DIR=""
+
+function set_up_before_script() {
+  # shellcheck source=../beads-uninstaller.sh
+  source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/beads-uninstaller.sh"
+  _TEMPLATE_DIR=$(cd "$(bashunit::temp_dir)" && pwd -P)
+  # Pre-create a bare git repo template (git init is expensive)
+  mkdir -p "$_TEMPLATE_DIR/git-template"
+  git -C "$_TEMPLATE_DIR/git-template" init -q
+}
+
 
 function set_up() {
   reset_state
-  TEST_DIR=$(cd "$(mktemp -d)" && pwd -P)
+  TEST_DIR=$(cd "$(bashunit::temp_dir)" && pwd -P)
 }
 
 function tear_down() {
-  rm -rf "$TEST_DIR"
+  : # bashunit::temp_dir auto-cleans
+}
+
+# Helper: create a git repo by copying the template instead of git init
+_init_repo() {
+  local repo="$1"
+  cp -R "$_TEMPLATE_DIR/git-template" "$repo"
 }
 
 # ── add_repo_root ────────────────────────────────────────────────────────
 
 function test_add_repo_root_finds_git_repo_root() {
   local repo="$TEST_DIR/myproject"
+  _init_repo "$repo"
   mkdir -p "$repo/subdir"
   touch "$repo/subdir/file.txt"
-  git -C "$repo" init -q
 
   local result
   result="$(add_repo_root "$repo/subdir/file.txt")"
@@ -46,8 +65,8 @@ function test_add_repo_root_falls_back_to_dir_without_git() {
 
 function test_add_repo_root_handles_git_hooks_path() {
   local repo="$TEST_DIR/myproject"
+  _init_repo "$repo"
   mkdir -p "$repo/.git/hooks"
-  git -C "$repo" init -q
   touch "$repo/.git/hooks/pre-commit"
 
   local result
@@ -65,87 +84,79 @@ function test_scan_roots_creates_output_file() {
   ROOTS=("$clean_dir")
 
   local roots_file
-  roots_file=$(mktemp)
+  roots_file=$(bashunit::temp_file)
   scan_roots "$roots_file"
 
   # File should exist (even if empty when no beads traces)
   assert_file_exists "$roots_file"
-  rm -f "$roots_file"
 }
 
 function test_scan_roots_finds_beads_directory() {
   local repo="$TEST_DIR/myproject"
+  _init_repo "$repo"
   mkdir -p "$repo/.beads"
   echo '{}' > "$repo/.beads/issues.jsonl"
-  git -C "$repo" init -q
   ROOTS=("$repo")
 
   local roots_file
-  roots_file=$(mktemp)
+  roots_file=$(bashunit::temp_file)
   scan_roots "$roots_file"
 
   assert_file_contains "$roots_file" "myproject"
-  rm -f "$roots_file"
 }
 
 function test_scan_roots_finds_beads_hooks_dir() {
   local repo="$TEST_DIR/myproject"
+  _init_repo "$repo"
   mkdir -p "$repo/.beads-hooks"
   echo 'hook' > "$repo/.beads-hooks/pre-commit"
-  git -C "$repo" init -q
   ROOTS=("$repo")
 
   local roots_file
-  roots_file=$(mktemp)
+  roots_file=$(bashunit::temp_file)
   scan_roots "$roots_file"
 
   assert_file_contains "$roots_file" "myproject"
-  rm -f "$roots_file"
 }
 
 function test_scan_roots_finds_aider_conf() {
   local repo="$TEST_DIR/myproject"
-  mkdir -p "$repo"
+  _init_repo "$repo"
   printf '# BEADS config\nbeads: true\n' > "$repo/.aider.conf.yml"
-  git -C "$repo" init -q
   ROOTS=("$repo")
 
   local roots_file
-  roots_file=$(mktemp)
+  roots_file=$(bashunit::temp_file)
   scan_roots "$roots_file"
 
   assert_file_contains "$roots_file" "$repo"
-  rm -f "$roots_file"
 }
 
 function test_scan_roots_finds_agents_md_with_beads() {
   local repo="$TEST_DIR/myproject"
-  mkdir -p "$repo"
+  _init_repo "$repo"
   printf '# Project\n\n## Landing the Plane (Session Completion)\n\nbd sync\n' > "$repo/AGENTS.md"
-  git -C "$repo" init -q
   ROOTS=("$repo")
 
   local roots_file
-  roots_file=$(mktemp)
+  roots_file=$(bashunit::temp_file)
   scan_roots "$roots_file"
 
   assert_file_contains "$roots_file" "$repo"
-  rm -f "$roots_file"
 }
 
 function test_scan_roots_finds_claude_settings() {
   local repo="$TEST_DIR/myproject"
+  _init_repo "$repo"
   mkdir -p "$repo/.claude"
   printf '{"hooks":{"SessionStart":[{"hooks":[{"command":"bd prime"}]}]}}\n' > "$repo/.claude/settings.local.json"
-  git -C "$repo" init -q
   ROOTS=("$repo")
 
   local roots_file
-  roots_file=$(mktemp)
+  roots_file=$(bashunit::temp_file)
   scan_roots "$roots_file"
 
   assert_file_contains "$roots_file" "myproject"
-  rm -f "$roots_file"
 }
 
 function test_scan_roots_excludes_home_dotbeads() {
@@ -159,7 +170,7 @@ function test_scan_roots_excludes_home_dotbeads() {
   ROOTS=("$fake_home")
 
   local roots_file
-  roots_file=$(mktemp)
+  roots_file=$(bashunit::temp_file)
   scan_roots "$roots_file"
 
   export HOME="$orig_home"
@@ -168,28 +179,26 @@ function test_scan_roots_excludes_home_dotbeads() {
   local count
   count=$(wc -l < "$roots_file" | tr -d ' ')
   assert_same "0" "$count"
-  rm -f "$roots_file"
 }
 
 function test_scan_roots_finds_gemini_settings() {
   local repo="$TEST_DIR/myproject"
+  _init_repo "$repo"
   mkdir -p "$repo/.gemini"
   printf '{"hooks":{}}\n' > "$repo/.gemini/settings.json"
-  git -C "$repo" init -q
   ROOTS=("$repo")
 
   local roots_file
-  roots_file=$(mktemp)
+  roots_file=$(bashunit::temp_file)
   scan_roots "$roots_file"
 
   assert_file_contains "$roots_file" "myproject"
-  rm -f "$roots_file"
 }
 
 function test_scan_roots_finds_beads_git_hooks() {
   local repo="$TEST_DIR/myproject"
+  _init_repo "$repo"
   mkdir -p "$repo/.git/hooks"
-  git -C "$repo" init -q
 
   # Create a beads hook with the bd-shim signature
   cat > "$repo/.git/hooks/pre-commit" <<'EOF'
@@ -205,18 +214,17 @@ EOF
   ROOTS=("$repo")
 
   local roots_file
-  roots_file=$(mktemp)
+  roots_file=$(bashunit::temp_file)
   scan_roots "$roots_file"
 
   assert_file_contains "$roots_file" "myproject"
-  rm -f "$roots_file"
 }
 
 function test_scan_roots_finds_repo_with_only_git_hooks() {
   # Test the specific case: repo with ONLY beads hooks, no other beads artifacts
   local repo="$TEST_DIR/hooks_only"
+  _init_repo "$repo"
   mkdir -p "$repo/.git/hooks"
-  git -C "$repo" init -q
 
   # Create multiple beads hooks
   cat > "$repo/.git/hooks/post-checkout" <<'EOF'
@@ -238,12 +246,11 @@ EOF
   ROOTS=("$repo")
 
   local roots_file
-  roots_file=$(mktemp)
+  roots_file=$(bashunit::temp_file)
   scan_roots "$roots_file"
 
   # Should find the repo even with no .beads/ or other artifacts
   assert_file_contains "$roots_file" "hooks_only"
-  rm -f "$roots_file"
 }
 
 # ── Cache mechanism ──────────────────────────────────────────────────────
@@ -255,13 +262,12 @@ function test_cache_reused_on_apply() {
 
   # Simulate main's cache reuse logic
   local roots_file
-  roots_file=$(mktemp)
+  roots_file=$(bashunit::temp_file)
   if [[ "$APPLY" -eq 1 ]] && [[ -f "$CACHE_FILE" ]] && [[ -s "$CACHE_FILE" ]]; then
     cp "$CACHE_FILE" "$roots_file"
   fi
 
   assert_file_contains "$roots_file" "/tmp/cached_repo"
-  rm -f "$roots_file"
 }
 
 function test_cache_not_used_on_dry_run() {
@@ -271,7 +277,7 @@ function test_cache_not_used_on_dry_run() {
 
   # Simulate main's logic: dry-run should NOT use existing cache
   local roots_file
-  roots_file=$(mktemp)
+  roots_file=$(bashunit::temp_file)
   local used_cache=0
   if [[ "$APPLY" -eq 1 ]] && [[ -f "$CACHE_FILE" ]] && [[ -s "$CACHE_FILE" ]]; then
     cp "$CACHE_FILE" "$roots_file"
@@ -279,7 +285,6 @@ function test_cache_not_used_on_dry_run() {
   fi
 
   assert_same "0" "$used_cache"
-  rm -f "$roots_file"
 }
 
 function test_cache_ignored_when_empty() {
@@ -288,7 +293,7 @@ function test_cache_ignored_when_empty() {
   touch "$CACHE_FILE"
 
   local roots_file
-  roots_file=$(mktemp)
+  roots_file=$(bashunit::temp_file)
   local used_cache=0
   if [[ "$APPLY" -eq 1 ]] && [[ -f "$CACHE_FILE" ]] && [[ -s "$CACHE_FILE" ]]; then
     cp "$CACHE_FILE" "$roots_file"
@@ -296,7 +301,6 @@ function test_cache_ignored_when_empty() {
   fi
 
   assert_same "0" "$used_cache"
-  rm -f "$roots_file"
 }
 
 function test_cache_deleted_after_apply() {

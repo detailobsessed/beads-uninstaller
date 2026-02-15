@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
+# bashunit: no-parallel-tests
 
 function set_up() {
+  # shellcheck source=../beads-uninstaller.sh
+  source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/beads-uninstaller.sh"
   reset_state
   APPLY=1
-  TEST_DIR=$(mktemp -d)
+  TEST_DIR=$(bashunit::temp_dir)
 }
 
 function tear_down() {
-  rm -rf "$TEST_DIR"
+  : # bashunit::temp_dir auto-cleans
 }
 
 # ── stop_daemon_pid_file ─────────────────────────────────────────────────

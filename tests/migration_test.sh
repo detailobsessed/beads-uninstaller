@@ -1,14 +1,17 @@
 #!/usr/bin/env bash
+# bashunit: no-parallel-tests
 
 function set_up() {
+  # shellcheck source=../beads-uninstaller.sh
+  source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/beads-uninstaller.sh"
   reset_state
   APPLY=1
   MIGRATE_TK=1
-  TEST_DIR=$(mktemp -d)
+  TEST_DIR=$(bashunit::temp_dir)
 }
 
 function tear_down() {
-  rm -rf "$TEST_DIR"
+  : # bashunit::temp_dir auto-cleans
 }
 
 # ── ensure_tk_installed ──────────────────────────────────────────────────
@@ -26,11 +29,10 @@ function test_ensure_tk_installed_fails_when_tk_unavailable() {
   local saved_path="$PATH"
   PATH="/usr/bin:/bin"
 
-  local rc=0
-  ensure_tk_installed || rc=$?
+  ensure_tk_installed
+  assert_general_error
 
   PATH="$saved_path"
-  assert_same "1" "$rc"
 }
 
 # ── migrate_repos_to_tk ─────────────────────────────────────────────────
