@@ -66,7 +66,9 @@ cd beads-uninstaller
 
 - `~/.beads/` and `~/.config/bd/`
 - Beads hooks from `~/.claude/settings.json` and `~/.gemini/settings.json`
-- Beads entries from global gitignore
+- Beads entries from global gitignore (`~/.gitignore_global` or `~/.config/git/ignore`)
+- Global git config: `merge.beads.*`, `beads.*`,
+  and `core.hooksPath` (if pointing to beads)
 - `~/.beads-planning/` (only if it contains a `.beads` subdirectory)
 
 ### Binaries
@@ -108,7 +110,7 @@ cd beads-uninstaller
 ## Testing
 
 The project uses [bashunit](https://bashunit.typeddevs.com/)
-with 183 tests covering all functions. Coverage is
+with 200+ tests covering all functions. Coverage is
 enabled by default via `.env`.
 
 ```bash
