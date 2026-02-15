@@ -556,18 +556,59 @@ cleanup_repo() {
   fi
 }
 
+cleanup_global_git_config() {
+  if ! command -v git >/dev/null 2>&1; then
+    return 0
+  fi
+
+  # Remove global merge.beads.* config
+  if git config --global --get merge.beads.driver >/dev/null 2>&1; then
+    run git config --global --unset merge.beads.driver
+    run git config --global --unset merge.beads.name || true
+  fi
+
+  # Remove global beads.* config keys
+  local beads_keys
+  beads_keys="$(git config --global --get-regexp '^beads\.' 2>/dev/null | awk '{print $1}' || true)"
+  if [[ -n "$beads_keys" ]]; then
+    while IFS= read -r key; do
+      [[ -n "$key" ]] || continue
+      run git config --global --unset "$key"
+    done <<< "$beads_keys"
+  fi
+
+  # Remove global core.hooksPath if it points to a beads directory
+  local global_hooks_path
+  global_hooks_path="$(git config --global --get core.hooksPath 2>/dev/null || true)"
+  if [[ -n "$global_hooks_path" ]]; then
+    if [[ "$global_hooks_path" == ".beads-hooks" || "$global_hooks_path" == */.beads-hooks || "$global_hooks_path" == */.beads/* ]]; then
+      run git config --global --unset core.hooksPath
+    fi
+  fi
+}
+
 cleanup_global_gitignore() {
   local ignore_path=""
   if command -v git >/dev/null 2>&1; then
     ignore_path="$(git config --global core.excludesfile 2>/dev/null || true)"
   fi
   if [[ -n "$ignore_path" ]]; then
+    # Expand tilde if present
     # shellcheck disable=SC2088
     if [[ "$ignore_path" == '~/'* ]]; then
       ignore_path="${HOME}/${ignore_path#\~/}"
+    elif [[ "$ignore_path" == '~' ]]; then
+      ignore_path="$HOME"
     fi
-  elif [[ -f "$HOME/.config/git/ignore" ]]; then
-    ignore_path="$HOME/.config/git/ignore"
+  fi
+
+  # Fallback to common locations if not set or doesn't exist
+  if [[ ! -f "$ignore_path" ]]; then
+    if [[ -f "$HOME/.gitignore_global" ]]; then
+      ignore_path="$HOME/.gitignore_global"
+    elif [[ -f "$HOME/.config/git/ignore" ]]; then
+      ignore_path="$HOME/.config/git/ignore"
+    fi
   fi
 
   [[ -f "$ignore_path" ]] || return 0
@@ -604,6 +645,7 @@ cleanup_home() {
 
   cleanup_settings_json "$HOME/.claude/settings.json" "claude"
   cleanup_settings_json "$HOME/.gemini/settings.json" "gemini"
+  cleanup_global_git_config
   cleanup_global_gitignore
 
   if [[ -d "$HOME/.beads" ]]; then
