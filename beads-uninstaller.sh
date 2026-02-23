@@ -669,6 +669,23 @@ cleanup_binaries() {
 
   log_section "Binary cleanup"
 
+  # Package managers (best-effort) - check first before binaries are removed
+  if command -v brew >/dev/null 2>&1; then
+    # Check for both 'beads' (package name) and 'bd' (legacy/alternative name)
+    if brew list --formula 2>/dev/null | grep -qx "beads"; then
+      run brew uninstall beads
+    elif brew list --formula 2>/dev/null | grep -qx "bd"; then
+      run brew uninstall bd
+    fi
+  fi
+
+  if command -v npm >/dev/null 2>&1; then
+    if npm ls -g --depth=0 @beads/bd >/dev/null 2>&1; then
+      run npm uninstall -g @beads/bd
+    fi
+  fi
+
+  # Clean up any remaining binaries not managed by package managers
   local paths_file
   paths_file=$(mktemp)
 
@@ -708,19 +725,6 @@ cleanup_binaries() {
   done < <(sort -u "$paths_file")
 
   rm -f "$paths_file"
-
-  # Package managers (best-effort)
-  if command -v brew >/dev/null 2>&1; then
-    if brew list --formula 2>/dev/null | grep -qx "bd"; then
-      run brew uninstall bd
-    fi
-  fi
-
-  if command -v npm >/dev/null 2>&1; then
-    if npm ls -g --depth=0 @beads/bd >/dev/null 2>&1; then
-      run npm uninstall -g @beads/bd
-    fi
-  fi
 }
 
 # ── tk (ticket) migration ────────────────────────────────────────────────
@@ -876,7 +880,7 @@ scan_roots() {
     (
       cd "$abs_root" || exit
 
-      { rg --files --hidden --no-ignore --null -g '!.git/**' -g '.beads/**' . 2>/dev/null || true; } | while IFS= read -r -d '' file; do
+      { rg --files --hidden --no-ignore --null -g '.beads/**' -g '!.git/**' . 2>/dev/null || true; } | while IFS= read -r -d '' file; do
         local full="$abs_root/${file#./}"
         case "$full" in
           "$HOME/.beads"/*)
@@ -886,23 +890,24 @@ scan_roots() {
         add_repo_root "$full" >> "$roots_file"
       done
 
-      { rg --files --hidden --no-ignore --null -g '!.git/**' -g '.beads-hooks/**' . 2>/dev/null || true; } | while IFS= read -r -d '' file; do
+      { rg --files --hidden --no-ignore --null -g '.beads-hooks/**' -g '!.git/**' . 2>/dev/null || true; } | while IFS= read -r -d '' file; do
         add_repo_root "$abs_root/${file#./}" >> "$roots_file"
       done
 
-      { rg --files --hidden --no-ignore --null -g '!.git/**' \
+      { rg --files --hidden --no-ignore --null \
         -g '.aider.conf.yml' \
         -g '.cursor/rules/beads.mdc' \
         -g '.aider/BEADS.md' \
         -g '.aider/README.md' \
         -g '.claude/settings.local.json' \
         -g '.gemini/settings.json' \
+        -g '!.git/**' \
         . 2>/dev/null || true; } | while IFS= read -r -d '' file; do
           add_repo_root "$abs_root/${file#./}" >> "$roots_file"
         done
 
       # AGENTS.md that actually contains beads instructions
-      { rg -l --hidden --no-ignore --null -g '!.git/**' -g 'AGENTS.md' \
+      { rg -l --hidden --no-ignore --null -g 'AGENTS.md' -g '!.git/**' \
         -e 'Landing the Plane \(Session Completion\)' \
         -e 'BEGIN BEADS INTEGRATION' \
         . 2>/dev/null || true; } | while IFS= read -r -d '' file; do
@@ -911,7 +916,8 @@ scan_roots() {
 
       # Git hooks containing beads signatures
       # Search for hooks with bd-shim, bd-hooks-version, or "bd (beads)" markers
-      { rg -l --hidden --no-ignore --null -g '.git/hooks/*' \
+      # Note: we search .git directory separately without excluding it
+      { rg -l --hidden --no-ignore --null -g '**/.git/hooks/*' \
         -e 'bd-shim' \
         -e 'bd-hooks-version:' \
         -e 'bd \(beads\)' \
