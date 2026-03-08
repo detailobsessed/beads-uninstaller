@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
+# bashunit: no-parallel-tests
 
 function set_up() {
+  # shellcheck source=../beads-uninstaller.sh
+  source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/beads-uninstaller.sh"
   reset_state
-  TEST_DIR=$(cd "$(mktemp -d)" && pwd -P)
+  TEST_DIR=$(cd "$(bashunit::temp_dir)" && pwd -P)
 }
 
 function tear_down() {
-  rm -rf "$TEST_DIR"
+  : # bashunit::temp_dir auto-cleans
 }
 
 function test_defaults_are_dry_run() {

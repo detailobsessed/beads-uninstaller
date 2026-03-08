@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
+# bashunit: no-parallel-tests
 
 function set_up() {
+  # shellcheck source=../beads-uninstaller.sh
+  source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/beads-uninstaller.sh"
   reset_state
-  TEST_DIR=$(mktemp -d)
+  TEST_DIR=$(bashunit::temp_dir)
 }
 
 function tear_down() {
-  rm -rf "$TEST_DIR"
+  : # bashunit::temp_dir auto-cleans
 }
 
 # ── is_beads_hook ────────────────────────────────────────────────────────
@@ -47,15 +50,13 @@ function test_is_beads_hook_rejects_normal_hook() {
   local hook="$TEST_DIR/pre-commit"
   printf '#!/bin/bash\necho normal hook\n' > "$hook"
 
-  local rc=0
-  is_beads_hook "$hook" || rc=$?
-  assert_same "1" "$rc"
+  is_beads_hook "$hook"
+  assert_general_error
 }
 
 function test_is_beads_hook_rejects_nonexistent_file() {
-  local rc=0
-  is_beads_hook "$TEST_DIR/nonexistent" || rc=$?
-  assert_not_same "0" "$rc"
+  is_beads_hook "$TEST_DIR/nonexistent"
+  assert_unsuccessful_code
 }
 
 # ── restore_hook_backup ─────────────────────────────────────────────────
@@ -68,7 +69,7 @@ function test_restore_hook_backup_restores_dot_old() {
   restore_hook_backup "$hook"
 
   assert_file_exists "$hook"
-  assert_same "original content" "$(cat "$hook")"
+  assert_file_contains "$hook" "original content"
 }
 
 function test_restore_hook_backup_removes_beads_dot_old() {
@@ -90,7 +91,7 @@ function test_restore_hook_backup_restores_dot_backup() {
   restore_hook_backup "$hook"
 
   assert_file_exists "$hook"
-  assert_same "original content" "$(cat "$hook")"
+  assert_file_contains "$hook" "original content"
 }
 
 function test_restore_hook_backup_prefers_dot_old_over_dot_backup() {
@@ -101,7 +102,7 @@ function test_restore_hook_backup_prefers_dot_old_over_dot_backup() {
 
   restore_hook_backup "$hook"
 
-  assert_same "from old" "$(cat "$hook")"
+  assert_file_contains "$hook" "from old"
 }
 
 function test_restore_hook_backup_restores_timestamped_backup() {
@@ -114,7 +115,7 @@ function test_restore_hook_backup_restores_timestamped_backup() {
   restore_hook_backup "$hook"
 
   assert_file_exists "$hook"
-  assert_same "newer backup" "$(cat "$hook")"
+  assert_file_contains "$hook" "newer backup"
 }
 
 function test_restore_hook_backup_removes_beads_timestamped_backup() {
@@ -165,7 +166,7 @@ function test_cleanup_hooks_dir_restores_backup_after_removing_beads() {
   cleanup_hooks_dir "$hooks_dir"
 
   assert_file_exists "$hooks_dir/pre-commit"
-  assert_same "original hook" "$(cat "$hooks_dir/pre-commit")"
+  assert_file_contains "$hooks_dir/pre-commit" "original hook"
 }
 
 function test_cleanup_hooks_dir_removes_beads_backup_files() {

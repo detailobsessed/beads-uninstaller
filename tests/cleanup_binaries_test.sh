@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
+# bashunit: no-parallel-tests
 
 function set_up() {
+  # shellcheck source=../beads-uninstaller.sh
+  source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/beads-uninstaller.sh"
   reset_state
   APPLY=1
-  TEST_DIR=$(mktemp -d)
+  TEST_DIR=$(bashunit::temp_dir)
   REAL_HOME="$HOME"
   export HOME="$TEST_DIR/fakehome"
   mkdir -p "$HOME/.local/bin" "$HOME/go/bin"
@@ -11,7 +14,6 @@ function set_up() {
 
 function tear_down() {
   export HOME="$REAL_HOME"
-  rm -rf "$TEST_DIR"
 }
 
 function test_cleanup_binaries_skipped_when_skip_binary_set() {

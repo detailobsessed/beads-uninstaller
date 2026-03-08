@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
+# bashunit: no-parallel-tests
 
 function set_up() {
+  # shellcheck source=../beads-uninstaller.sh
+  source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/beads-uninstaller.sh"
   reset_state
   APPLY=1
-  TEST_DIR=$(mktemp -d)
+  TEST_DIR=$(bashunit::temp_dir)
 }
 
 function tear_down() {
-  rm -rf "$TEST_DIR"
+  : # bashunit::temp_dir auto-cleans
 }
 
 # ── cleanup_gitattributes ────────────────────────────────────────────────
@@ -182,12 +185,11 @@ function test_cleanup_agents_file_strips_bd_intro_line() {
 function test_cleanup_agents_file_noop_if_no_beads() {
   local file="$TEST_DIR/AGENTS.md"
   printf '# My Project\n\nNormal content.\n' > "$file"
-  local before
-  before=$(cat "$file")
+  cp "$file" "$file.expected"
 
   cleanup_agents_file "$file"
 
-  assert_same "$before" "$(cat "$file")"
+  assert_files_equals "$file.expected" "$file"
 }
 
 function test_cleanup_agents_file_noop_if_no_file() {
@@ -271,12 +273,11 @@ function test_cleanup_settings_json_preserves_non_beads_content() {
   }
 }
 JSON
-  local before
-  before=$(cat "$file")
+  cp "$file" "$file.expected"
 
   cleanup_settings_json "$file" "claude"
 
-  assert_same "$before" "$(cat "$file")"
+  assert_files_equals "$file.expected" "$file"
 }
 
 function test_cleanup_settings_json_removes_bd_prime_stealth() {

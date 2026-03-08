@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
+# bashunit: no-parallel-tests
 
 function set_up() {
+  # shellcheck source=../beads-uninstaller.sh
+  source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/beads-uninstaller.sh"
   reset_state
   APPLY=1
-  TEST_DIR=$(mktemp -d)
+  TEST_DIR=$(bashunit::temp_dir)
   REAL_HOME="$HOME"
   export HOME="$TEST_DIR"
   export GIT_CONFIG_GLOBAL="$TEST_DIR/.gitconfig"
@@ -17,7 +20,6 @@ function set_up() {
 function tear_down() {
   export HOME="$REAL_HOME"
   unset GIT_CONFIG_GLOBAL
-  rm -rf "$TEST_DIR"
 }
 
 # ── Tests for cleanup_global_git_config ─────────────────────────────────────
@@ -28,13 +30,11 @@ function test_cleanup_global_git_config_removes_merge_beads() {
 
   cleanup_global_git_config
 
-  local driver
-  driver="$(git config --global --get merge.beads.driver 2>/dev/null || echo "UNSET")"
-  assert_same "UNSET" "$driver"
+  git config --global --get merge.beads.driver 2>/dev/null
+  assert_exit_code "1"
 
-  local name
-  name="$(git config --global --get merge.beads.name 2>/dev/null || echo "UNSET")"
-  assert_same "UNSET" "$name"
+  git config --global --get merge.beads.name 2>/dev/null
+  assert_exit_code "1"
 }
 
 function test_cleanup_global_git_config_removes_beads_keys() {
@@ -44,17 +44,14 @@ function test_cleanup_global_git_config_removes_beads_keys() {
 
   cleanup_global_git_config
 
-  local role
-  role="$(git config --global --get beads.role 2>/dev/null || echo "UNSET")"
-  assert_same "UNSET" "$role"
+  git config --global --get beads.role 2>/dev/null
+  assert_exit_code "1"
 
-  local backend
-  backend="$(git config --global --get beads.backend 2>/dev/null || echo "UNSET")"
-  assert_same "UNSET" "$backend"
+  git config --global --get beads.backend 2>/dev/null
+  assert_exit_code "1"
 
-  local autocommit
-  autocommit="$(git config --global --get beads.autocommit 2>/dev/null || echo "UNSET")"
-  assert_same "UNSET" "$autocommit"
+  git config --global --get beads.autocommit 2>/dev/null
+  assert_exit_code "1"
 }
 
 function test_cleanup_global_git_config_removes_beads_hooks_path() {
@@ -62,9 +59,8 @@ function test_cleanup_global_git_config_removes_beads_hooks_path() {
 
   cleanup_global_git_config
 
-  local hp
-  hp="$(git config --global --get core.hooksPath 2>/dev/null || echo "UNSET")"
-  assert_same "UNSET" "$hp"
+  git config --global --get core.hooksPath 2>/dev/null
+  assert_exit_code "1"
 }
 
 function test_cleanup_global_git_config_preserves_non_beads_hooks_path() {
@@ -84,13 +80,11 @@ function test_cleanup_global_git_config_dry_run_preserves() {
 
   cleanup_global_git_config
 
-  local driver
-  driver="$(git config --global --get merge.beads.driver 2>/dev/null || true)"
-  assert_not_empty "$driver"
+  git config --global --get merge.beads.driver 2>/dev/null
+  assert_successful_code
 
-  local role
-  role="$(git config --global --get beads.role 2>/dev/null || true)"
-  assert_not_empty "$role"
+  git config --global --get beads.role 2>/dev/null
+  assert_successful_code
 }
 
 # ── Tests for cleanup_global_gitignore (with real git config) ───────────────

@@ -1,18 +1,29 @@
 #!/usr/bin/env bash
+# bashunit: no-parallel-tests
+
+_TEMPLATE_DIR=""
+
+function set_up_before_script() {
+  # shellcheck source=../beads-uninstaller.sh
+  source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/beads-uninstaller.sh"
+  _TEMPLATE_DIR=$(bashunit::temp_dir)
+  _create_template_repo "$_TEMPLATE_DIR/template"
+}
+
 
 function set_up() {
   reset_state
   APPLY=1
-  TEST_DIR=$(mktemp -d)
+  TEST_DIR=$(bashunit::temp_dir)
 }
 
 function tear_down() {
-  rm -rf "$TEST_DIR"
+  : # bashunit::temp_dir auto-cleans
 }
 
-# ── Helper: create a fake repo with beads artifacts ──────────────────────
+# ── Helper: create the template repo (called once) ──────────────────────
 
-create_beads_repo() {
+_create_template_repo() {
   local repo="$1"
   mkdir -p "$repo"
 
@@ -44,6 +55,13 @@ create_beads_repo() {
 
   # AGENTS.md with beads content
   printf '# Project\n\n<!-- BEGIN BEADS INTEGRATION -->\nBeads stuff\n<!-- END BEADS INTEGRATION -->\n\n## Other\nKeep this.\n' > "$repo/AGENTS.md"
+}
+
+# ── Helper: copy template repo (fast, no git init) ──────────────────────
+
+create_beads_repo() {
+  local repo="$1"
+  cp -R "$_TEMPLATE_DIR/template" "$repo"
 }
 
 # ── cleanup_repo tests ───────────────────────────────────────────────────
@@ -169,9 +187,8 @@ function test_cleanup_repo_removes_merge_driver_config() {
 
   cleanup_repo "$repo"
 
-  local driver
-  driver=$(git -C "$repo" config --get merge.beads.driver 2>/dev/null || echo "UNSET")
-  assert_same "UNSET" "$driver"
+  git -C "$repo" config --get merge.beads.driver 2>/dev/null
+  assert_exit_code "1"
 }
 
 function test_cleanup_repo_removes_beads_config_keys() {
@@ -182,12 +199,10 @@ function test_cleanup_repo_removes_beads_config_keys() {
 
   cleanup_repo "$repo"
 
-  local role
-  role=$(git -C "$repo" config --get beads.role 2>/dev/null || echo "UNSET")
-  assert_same "UNSET" "$role"
-  local backend
-  backend=$(git -C "$repo" config --get beads.backend 2>/dev/null || echo "UNSET")
-  assert_same "UNSET" "$backend"
+  git -C "$repo" config --get beads.role 2>/dev/null
+  assert_exit_code "1"
+  git -C "$repo" config --get beads.backend 2>/dev/null
+  assert_exit_code "1"
 }
 
 function test_cleanup_repo_cleans_beads_hooks_path() {
@@ -200,9 +215,8 @@ function test_cleanup_repo_cleans_beads_hooks_path() {
   cleanup_repo "$repo"
 
   assert_file_not_exists "$repo/.beads-hooks/pre-commit"
-  local hp
-  hp=$(git -C "$repo" config --get core.hooksPath 2>/dev/null || echo "UNSET")
-  assert_same "UNSET" "$hp"
+  git -C "$repo" config --get core.hooksPath 2>/dev/null
+  assert_exit_code "1"
 }
 
 function test_cleanup_repo_removes_beads_worktrees() {
